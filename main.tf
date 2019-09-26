@@ -131,7 +131,7 @@ resource "aws_autoscaling_group" "eks_node_asg" {
       propagate_at_launch = true
     },
     {
-      key                 = "kubernetes.io/cluster/${aws_eks_cluster.navigator_eks_cluster.name}"
+      key                 = "kubernetes.io/cluster/${aws_eks_cluster.eks_cluster.name}"
       value               = "owned"
       propagate_at_launch = true 
     }
@@ -144,12 +144,12 @@ resource "aws_autoscaling_group" "eks_node_asg" {
 
 # Note: Must have aws-iam-authenticator and jq installed locally to have this terraform data source to work
 data "external" "aws_iam_authenticator" {
-  program = ["sh", "-c", "aws-iam-authenticator token -i ${aws_eks_cluster.navigator_eks_cluster.name} | jq -r -c .status"]
+  program = ["sh", "-c", "aws-iam-authenticator token -i ${aws_eks_cluster.eks_cluster.name} | jq -r -c .status"]
 }
  
 provider "kubernetes" {
-  host                   = "${aws_eks_cluster.navigator_eks_cluster.endpoint}"
-  cluster_ca_certificate = "${base64decode(aws_eks_cluster.navigator_eks_cluster.certificate_authority.0.data)}"
+  host                   = "${aws_eks_cluster.eks_cluster.endpoint}"
+  cluster_ca_certificate = "${base64decode(aws_eks_cluster.eks_cluster.certificate_authority.0.data)}"
   token                  = "${data.external.aws_iam_authenticator.result.token}"
   load_config_file       = false
   version                = "~> 1.5"
@@ -172,7 +172,7 @@ EOF
   }
 
   depends_on = [
-    "aws_eks_cluster.navigator_eks_cluster"
+    "aws_eks_cluster.eks_cluster"
   ]
 }
 
