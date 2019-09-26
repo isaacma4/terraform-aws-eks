@@ -27,5 +27,8 @@ Run the following commands within the root folder of the repo:
 
 ```
 terraform init
+terraform refresh -var-file=<tfvars_file>.tfvars
 terraform apply -var-file=<tfvars_file>.tfvars
 ```
+
+Make sure that you have provided a valid tfvars file with the variables/configurations you desire for your EKS Cluster. The refresh is necessary if the data sources are to be populated before the apply.
