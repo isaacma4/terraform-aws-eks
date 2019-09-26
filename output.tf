@@ -1,9 +1,9 @@
 output "eks_cluster_endpoint" {
-  value = "${aws_eks_cluster.navigator_eks_cluster.endpoint}"
+  value = "${aws_eks_cluster.eks_cluster.endpoint}"
 }
 
 output "eks_cluster_ca_certificate" {
-  value = "${base64decode(aws_eks_cluster.navigator_eks_cluster.certificate_authority.0.data)}"
+  value = "${base64decode(aws_eks_cluster.eks_cluster.certificate_authority.0.data)}"
 }
 
 output "eks_cluster_token" {
