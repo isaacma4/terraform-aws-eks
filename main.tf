@@ -18,7 +18,7 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_AmazonEKSServicePolicy" {
   role       = "${aws_iam_role.eks_cluster_role.name}"
 }
 
-resource "aws_eks_cluster" "navigator_eks_cluster" {
+resource "aws_eks_cluster" "eks_cluster" {
   name     = "${var.tag_project_name}-${var.tag_environment}-eks-cluster"
   role_arn = "${aws_iam_role.eks_cluster_role.arn}"
 
@@ -65,7 +65,7 @@ data "aws_ami" "eks_node" {
 
   filter {
     name   = "name"
-    values = ["amazon-eks-node-${aws_eks_cluster.navigator_eks_cluster.version}-*"]
+    values = ["amazon-eks-node-${aws_eks_cluster.eks_cluster.version}-*"]
   }
 
   filter {
@@ -85,7 +85,7 @@ resource "aws_launch_configuration" "eks_node_lc" {
   security_groups             = ["${aws_security_group.eks_node.id}", "${var.datasets_sg_id}"]
   user_data                   = <<USERDATA
 #!/bin/bash -xe
-/etc/eks/bootstrap.sh ${aws_eks_cluster.navigator_eks_cluster.name}
+/etc/eks/bootstrap.sh ${aws_eks_cluster.eks_cluster.name}
 echo -n OPTIONS=\"--insecure-registry ${var.nexus_url}\" >> /etc/sysconfig/docker
 systemctl restart docker
 USERDATA
@@ -206,9 +206,9 @@ users:
 KUBECONFIG
 
   vars = {
-    eks_cluster_endpoint  = "${aws_eks_cluster.navigator_eks_cluster.endpoint}"
-    eks_cluster_cert_auth = "${aws_eks_cluster.navigator_eks_cluster.certificate_authority.0.data}"
-    eks_cluster_name      = "${aws_eks_cluster.navigator_eks_cluster.name}"
+    eks_cluster_endpoint  = "${aws_eks_cluster.eks_cluster.endpoint}"
+    eks_cluster_cert_auth = "${aws_eks_cluster.eks_cluster.certificate_authority.0.data}"
+    eks_cluster_name      = "${aws_eks_cluster.eks_cluster.name}"
   }
 }
 
@@ -217,5 +217,5 @@ KUBECONFIG
 //   name    = "eks-${var.tag_environment}"
 //   type    = "CNAME"
 //   ttl     = "60"
-//   records = ["${aws_eks_cluster.navigator_eks_cluster.endpoint}"]
+//   records = ["${aws_eks_cluster.eks_cluster.endpoint}"]
 // }
