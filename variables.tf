@@ -6,7 +6,7 @@ variable "vpc_id" {
 
 variable "vpc_private_subnets" {
   description = "The private subnets that the eks cluster and nodes will be deployed to"
-  type        = "list"
+  type        = list(string)
 }
 
 // AMI Vars
@@ -18,15 +18,25 @@ variable "ami_owner" {
 
 // AWS Vars
 
+variable "aws_region" {
+  description = "The AWS region to deploy resources to"
+  default     = "us-east-1"
+}
+
 variable "aws_key_name" {
   description = "The name of the AWS key pair used to deploy the eks nodes with"
 }
 
 // EKS Vars
 
+variable "eks_cluster_endpoint_private_access" {
+  description = "A boolean that determines if the EKS cluster is publicly accessible or not (true = accessible, false = not accessible)"
+  default     = false
+}
+
 variable "eks_cluster_access_cidrs" {
   description = "The CIDRs which will grant access to the eks cluster that is created"
-  type        = "list"
+  type        = list(string)
 }
 
 variable "eks_node_instance_type" {
@@ -48,24 +58,6 @@ variable "eks_node_max_size" {
 variable "eks_node_min_size" {
   description = "The desired minimum number of eks nodes in the autoscaling group that can be up at a time"
 }
-
-// Datastores
-
-variable "datastores_sg_id" {
-  description = "The security group ID to allow access to datastores and components that may need access to the EKS cluster"
-}
-
-// Nexus Vars
-
-variable "nexus_url" {
-  description = "The Nexus url endpoint for docker registry for images to be pulled from"
-}
-
-// Route53 Vars
-
-// variable "route53_zone_id" {
-//   description = "The Route53 zone id to deploy DNS records of the eks resources with"
-// }
 
 // Tags
 

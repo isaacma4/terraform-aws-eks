@@ -1,3 +1,7 @@
+provider "aws" {
+  region = var.aws_region
+}
+
 resource "random_id" "hash" {
   byte_length = 4
 }
@@ -5,59 +9,59 @@ resource "random_id" "hash" {
 resource "aws_iam_role" "eks_cluster_role" {
   name               = "${var.tag_project_name}-${var.tag_environment}-eks-cluster-role"
   path               = "/"
-  assume_role_policy = "${file("${path.module}/../files/aws_eks_assume_role_policy.json")}"
+  assume_role_policy = file("${path.module}/templates/aws_eks_assume_role_policy.json")
 }
 
 resource "aws_iam_role_policy_attachment" "eks_cluster_AmazonEKSClusterPolicy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-  role       = "${aws_iam_role.eks_cluster_role.name}"
+  role       = aws_iam_role.eks_cluster_role.name
 }
 
 resource "aws_iam_role_policy_attachment" "eks_cluster_AmazonEKSServicePolicy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
-  role       = "${aws_iam_role.eks_cluster_role.name}"
+  role       = aws_iam_role.eks_cluster_role.name
 }
 
 resource "aws_eks_cluster" "eks_cluster" {
   name     = "${var.tag_project_name}-${var.tag_environment}-eks-cluster"
-  role_arn = "${aws_iam_role.eks_cluster_role.arn}"
+  role_arn = aws_iam_role.eks_cluster_role.arn
 
   vpc_config {
-    security_group_ids      = ["${aws_security_group.eks_cluster.id}", "${var.datastores_sg_id}"]
-    subnet_ids              = ["${var.vpc_private_subnets}"]
-    endpoint_private_access = true
+    security_group_ids      = [aws_security_group.eks_cluster.id]
+    subnet_ids              = var.vpc_private_subnets
+    endpoint_private_access = var.eks_cluster_endpoint_private_access
   }
 
   depends_on = [
-    "aws_iam_role_policy_attachment.eks_cluster_AmazonEKSClusterPolicy",
-    "aws_iam_role_policy_attachment.eks_cluster_AmazonEKSServicePolicy",
+    aws_iam_role_policy_attachment.eks_cluster_AmazonEKSClusterPolicy,
+    aws_iam_role_policy_attachment.eks_cluster_AmazonEKSServicePolicy,
   ]
 }
 
 resource "aws_iam_role" "eks_node_role" {
   name               = "${var.tag_project_name}-${var.tag_environment}-eks-node-role"
   path               = "/"
-  assume_role_policy = "${file("${path.module}/../files/aws_ec2_assume_role_policy.json")}" 
+  assume_role_policy = file("${path.module}/templates/aws_ec2_assume_role_policy.json")
 }
 
 resource "aws_iam_role_policy_attachment" "eks_node_AmazonEKSWorkerNodePolicy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-  role       = "${aws_iam_role.eks_node_role.name}"
+  role       = aws_iam_role.eks_node_role.name
 }
 
 resource "aws_iam_role_policy_attachment" "eks_node_AmazonEKS_CNI_Policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-  role       = "${aws_iam_role.eks_node_role.name}"
+  role       = aws_iam_role.eks_node_role.name
 }
 
 resource "aws_iam_role_policy_attachment" "eks_node_AmazonEC2ContainerRegistryReadOnly" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-  role       = "${aws_iam_role.eks_node_role.name}"
+  role       = aws_iam_role.eks_node_role.name
 }
 
 resource "aws_iam_instance_profile" "eks_node" {
   name = "${var.tag_project_name}-${var.tag_environment}-eks-node-instance-profile"
-  role = "${aws_iam_role.eks_node_role.name}"
+  role = aws_iam_role.eks_node_role.name
 }
 
 data "aws_ami" "eks_node" {
@@ -73,26 +77,24 @@ data "aws_ami" "eks_node" {
     values = ["hvm"]
   }
 
-  owners = ["${var.ami_owner}"]
+  owners = [var.ami_owner]
 }
 
 resource "aws_launch_configuration" "eks_node_lc" {
-  iam_instance_profile        = "${aws_iam_instance_profile.eks_node.name}"
-  image_id                    = "${data.aws_ami.eks_node.id}"
-  key_name                    = "${var.aws_key_name}"
-  instance_type               = "${var.eks_node_instance_type}"
+  iam_instance_profile        = aws_iam_instance_profile.eks_node.name
+  image_id                    = data.aws_ami.eks_node.id
+  key_name                    = var.aws_key_name
+  instance_type               = var.eks_node_instance_type
   name_prefix                 = "${var.tag_project_name}-${var.tag_environment}-eks-node-lc-${random_id.hash.hex}"
-  security_groups             = ["${aws_security_group.eks_node.id}", "${var.datasets_sg_id}"]
+  security_groups             = [aws_security_group.eks_node.id]
   user_data                   = <<USERDATA
 #!/bin/bash -xe
 /etc/eks/bootstrap.sh ${aws_eks_cluster.eks_cluster.name}
-echo -n OPTIONS=\"--insecure-registry ${var.nexus_url}\" >> /etc/sysconfig/docker
-systemctl restart docker
 USERDATA
 
   root_block_device {
     delete_on_termination = true
-    volume_size           = "${var.eks_node_volume_size}"
+    volume_size           = var.eks_node_volume_size
     volume_type           = "gp2"
   }
 
@@ -103,11 +105,11 @@ USERDATA
 
 resource "aws_autoscaling_group" "eks_node_asg" {
   name                 = "${var.tag_project_name}-${var.tag_environment}-eks-node-asg-${random_id.hash.hex}"
-  desired_capacity     = "${var.eks_node_desired_capacity}"
-  launch_configuration = "${aws_launch_configuration.eks_node_lc.id}"
-  max_size             = "${var.eks_node_max_size}"
-  min_size             = "${var.eks_node_min_size}"
-  vpc_zone_identifier  = ["${var.vpc_private_subnets}"]
+  desired_capacity     = var.eks_node_desired_capacity
+  launch_configuration = aws_launch_configuration.eks_node_lc.id
+  max_size             = var.eks_node_max_size
+  min_size             = var.eks_node_min_size
+  vpc_zone_identifier  = var.vpc_private_subnets
 
   tags = [
     {
@@ -148,9 +150,9 @@ data "external" "aws_iam_authenticator" {
 }
  
 provider "kubernetes" {
-  host                   = "${aws_eks_cluster.eks_cluster.endpoint}"
-  cluster_ca_certificate = "${base64decode(aws_eks_cluster.eks_cluster.certificate_authority.0.data)}"
-  token                  = "${data.external.aws_iam_authenticator.result.token}"
+  host                   = aws_eks_cluster.eks_cluster.endpoint
+  cluster_ca_certificate = base64decode(aws_eks_cluster.eks_cluster.certificate_authority.0.data)
+  token                  = data.external.aws_iam_authenticator.result.token
   load_config_file       = false
   version                = "~> 1.5"
 }
@@ -161,7 +163,7 @@ resource "kubernetes_config_map" "aws_auth" {
     namespace = "kube-system"
   }
 
-  data {
+  data = {
     mapRoles = <<EOF
 - rolearn: ${aws_iam_role.eks_node_role.arn}
   username: system:node:{{EC2PrivateDNSName}}
@@ -172,7 +174,7 @@ EOF
   }
 
   depends_on = [
-    "aws_eks_cluster.eks_cluster"
+    aws_eks_cluster.eks_cluster
   ]
 }
 
@@ -206,16 +208,8 @@ users:
 KUBECONFIG
 
   vars = {
-    eks_cluster_endpoint  = "${aws_eks_cluster.eks_cluster.endpoint}"
-    eks_cluster_cert_auth = "${aws_eks_cluster.eks_cluster.certificate_authority.0.data}"
-    eks_cluster_name      = "${aws_eks_cluster.eks_cluster.name}"
+    eks_cluster_endpoint  = aws_eks_cluster.eks_cluster.endpoint
+    eks_cluster_cert_auth = aws_eks_cluster.eks_cluster.certificate_authority.0.data
+    eks_cluster_name      = aws_eks_cluster.eks_cluster.name
   }
 }
-
-// resource "aws_route53_record" "eks_cluster_record" {
-//   zone_id = "${var.route53_zone_id}"
-//   name    = "eks-${var.tag_environment}"
-//   type    = "CNAME"
-//   ttl     = "60"
-//   records = ["${aws_eks_cluster.eks_cluster.endpoint}"]
-// }

@@ -14,7 +14,3 @@ output "eks_cluster_token" {
 output "eks_kubeconfig" {
   value = "${data.template_file.kubeconfig.rendered}"
 }
-
-// output "eks_cluster_record" {
-//   value = "${aws_route53_record.eks_cluster_record.fqdn}"
-// }
