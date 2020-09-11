@@ -1,5 +1,5 @@
 # eks-tf-module
-A module used to deploy EKS with work nodes on AWS integrated with Nexus docker registry
+A module used to deploy EKS with work nodes on AWS.
 
 ## Prerequisites
 
