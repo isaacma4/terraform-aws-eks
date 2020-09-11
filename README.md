@@ -1,5 +1,5 @@
 # eks-tf-module
-A module used to deploy EKS with work nodes on AWS.
+A module used to deploy EKS with worker nodes on AWS.
 
 ## Prerequisites
 
