@@ -1,4 +1,4 @@
-# eks-tf-module
+# terraform-aws-eks
 A module used to deploy EKS with worker nodes on AWS.
 
 ## Prerequisites
