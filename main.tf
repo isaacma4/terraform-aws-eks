@@ -170,7 +170,8 @@ EOF
   }
 
   depends_on = [
-    aws_eks_cluster.eks_cluster
+    aws_eks_cluster.eks_cluster,
+    aws_autoscaling_group.eks_node_asg
   ]
 }
 
