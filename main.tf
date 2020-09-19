@@ -1,13 +1,9 @@
-provider "aws" {
-  region = var.aws_region
-}
-
 resource "random_id" "hash" {
   byte_length = 4
 }
 
 resource "aws_iam_role" "eks_cluster_role" {
-  name               = "${var.tag_project_name}-${var.tag_environment}-eks-cluster-role"
+  name               = "${local.prefix}-eks-cluster-role"
   path               = "/"
   assume_role_policy = file("${path.module}/templates/aws_eks_assume_role_policy.json")
 }
@@ -23,7 +19,7 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_AmazonEKSServicePolicy" {
 }
 
 resource "aws_eks_cluster" "eks_cluster" {
-  name     = "${var.tag_project_name}-${var.tag_environment}-eks-cluster"
+  name     = "${local.prefix}-eks-cluster"
   role_arn = aws_iam_role.eks_cluster_role.arn
 
   vpc_config {
@@ -39,7 +35,7 @@ resource "aws_eks_cluster" "eks_cluster" {
 }
 
 resource "aws_iam_role" "eks_node_role" {
-  name               = "${var.tag_project_name}-${var.tag_environment}-eks-node-role"
+  name               = "${local.prefix}-eks-node-role"
   path               = "/"
   assume_role_policy = file("${path.module}/templates/aws_ec2_assume_role_policy.json")
 }
@@ -60,7 +56,7 @@ resource "aws_iam_role_policy_attachment" "eks_node_AmazonEC2ContainerRegistryRe
 }
 
 resource "aws_iam_instance_profile" "eks_node" {
-  name = "${var.tag_project_name}-${var.tag_environment}-eks-node-instance-profile"
+  name = "${local.prefix}-eks-node-instance-profile"
   role = aws_iam_role.eks_node_role.name
 }
 
@@ -85,7 +81,7 @@ resource "aws_launch_configuration" "eks_node_lc" {
   image_id                    = data.aws_ami.eks_node.id
   key_name                    = var.aws_key_name
   instance_type               = var.eks_node_instance_type
-  name_prefix                 = "${var.tag_project_name}-${var.tag_environment}-eks-node-lc-${random_id.hash.hex}"
+  name_prefix                 = "${local.prefix}-eks-node-lc-${random_id.hash.hex}"
   security_groups             = [aws_security_group.eks_node.id]
   user_data                   = <<USERDATA
 #!/bin/bash -xe
@@ -104,7 +100,7 @@ USERDATA
 }
 
 resource "aws_autoscaling_group" "eks_node_asg" {
-  name                 = "${var.tag_project_name}-${var.tag_environment}-eks-node-asg-${random_id.hash.hex}"
+  name                 = "${local.prefix}-eks-node-asg-${random_id.hash.hex}"
   desired_capacity     = var.eks_node_desired_capacity
   launch_configuration = aws_launch_configuration.eks_node_lc.id
   max_size             = var.eks_node_max_size
@@ -114,22 +110,22 @@ resource "aws_autoscaling_group" "eks_node_asg" {
   tags = [
     {
       key                 = "Name"
-      value               = "${format("%s-%s-%s-%s", var.tag_project_name, var.tag_environment, "eks-node", random_id.hash.hex)}"
+      value               = "${format("%s-%s-%s-%s", local.tags.project, local.tags.environment, "eks-node", random_id.hash.hex)}"
       propagate_at_launch = true
     },
     {
       key                 = "X-Project"
-      value               = "${var.tag_project_name}"
+      value               = "${local.tags.project}"
       propagate_at_launch = true
     },
     {
       key                 = "X-Contact"
-      value               = "${var.tag_contact}"
+      value               = "${local.tags.contact}"
       propagate_at_launch = true
     },
     {
       key                 = "X-TTL"
-      value               = "${var.tag_ttl}"
+      value               = "${local.tags.ttl}"
       propagate_at_launch = true
     },
     {
